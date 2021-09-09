@@ -1,190 +1,154 @@
-#!/bin/sh
-# ###########################################
-# SCRIPT : DOWNLOAD AND INSTALL Channel
-# ###########################################
+#!/bin/bash
+# 
+--------------------------------------------------------------------------------------
+# SCRIPT : DOWNLOAD AND INSTALL JediMakerXtream
+# Command: wget wget https://raw.githubusercontent.com/tarezoka/JediMakerXtream/main/installer.sh -qO - | /bin/sh
 #
-# Command: wget https://raw.githubusercontent.com/emilnabil/channel/main/installer.sh -qO - | /bin/sh
-#
-# ###########################################
-
-
-###########################################
 # Configure where we can find things here #
 TMPDIR='/tmp'
-CHECK='/tmp/check'
-PACKAGE='astra-sm'
-VERSION='2021_09_04'
-MY_URL='https://raw.githubusercontent.com/emilnabil/channel/main'
+VERSION='2.3'
+PACKAGE='enigma2-plugin-extensions-jediepgxtream'
+MY_URL='https://raw.githubusercontent.com/tarezoka/JediMakerXtream/main/'
+--------------------------------------------------------------------------------------
 
-####################
 #  Image Checking  #
 if which opkg > /dev/null 2>&1; then
     STATUS='/var/lib/opkg/status'
     OSTYPE='Opensource'
+    PKGEXP3='exteplayer3'
+    PKGGPLY='gstplayer'
     OPKG='opkg update'
     OPKGINSTAL='opkg install'
+    OPKGREMOV='opkg remove --force-depends'
 else
     STATUS='/var/lib/dpkg/status'
     OSTYPE='DreamOS'
+    PKGBAPP='gstreamer1.0-plugins-base-apps'
     OPKG='apt-get update'
     OPKGINSTAL='apt-get install'
-    LIBAIO1='libaio1'
-    LIBC6='libc6'
+    OPKGREMOV='apt-get purge --auto-remove'
+    DPKINSTALL='dpkg -i --force-overwrite'
 fi
 
-###########################
-# Remove Channel (if any) #
-rm -rf /etc/enigma2/lamedb
-rm -rf /etc/enigma2/*list
-rm -rf /etc/enigma2/*.tv
-rm -rf /etc/enigma2/*.radio
-rm -rf /etc/tuxbox/*.xml
+##################################
+# Remove previous files (if any) #
+rm -rf $TMPDIR/${PACKAGE}*
 
-#########################
-# Remove files (if any) #
-rm -rf $TMPDIR/channels_backup_user_${VERSION}.tar.gz astra-*.tar.gz bbc_pmt_v6.tar.gz
+######################
+#  Remove Old Plugin #
+if grep -qs "Package: $PACKAGE" $STATUS ; then
+    echo ""
+    echo "Remove old version..."
+    if [ $OSTYPE = "Opensource" ]; then
+        $OPKGREMOV $PACKAGE
+        echo ""
+        sleep 2; clear
+    else
+        $OPKGREMOV $PACKAGE
+        echo ""
+        sleep 2; clear
+    fi
+else
+    echo "No older version was found on the device... "
+    sleep 1
+    echo ""; clear
+fi
 
 #####################
-#  Checking Package #
+# Package Checking  #
 if [ $OSTYPE = "Opensource" ]; then
-    if grep -qs "Package: $PACKAGE" $STATUS ; then
-        echo
+    if grep -qs "Package: $PKGEXP3" $STATUS ; then
+        echo "$PKGEXP3 found in device..."
+        sleep 1; clear
     else
+        echo "Need to install $PKGEXP3"
+        echo
         echo "Opkg Update ..."
         $OPKG > /dev/null 2>&1
-        echo " Downloading $PACKAGE ......"
-        $OPKGINSTAL $PACKAGE
-    fi
-elif [ $OSTYPE = 'DreamOS' ]; then
-    if grep -qs "Package: $LIBAIO1" $STATUS ; then
+        echo " Downloading $PKGEXP3 ......"
         echo
+        $OPKGINSTAL $PKGEXP3
+        sleep 1; clear
+    fi
+    if grep -qs "Package: $PKGGPLY" $STATUS ; then
+        echo "$PKGGPLY found in device..."
+        sleep 1; clear
     else
+        echo "Need to install $PKGGPLY"
+        echo
+        echo "Opkg Update ..."
+        $OPKG > /dev/null 2>&1
+        echo " Downloading $PKGGPLY ......"
+        echo
+        $OPKGINSTAL $PKGGPLY
+        sleep 1; clear
+    fi
+
+elif [ $OSTYPE = "DreamOS" ]; then
+    if grep -qs "Package: $PKGBAPP" $STATUS ; then
+        echo " $PKGBAPP found in device..."
+        sleep 1; clear
+    else
+        echo "Need to install  $PKGBAPP"
+        echo
         echo "APT Update ..."
         $OPKG > /dev/null 2>&1
-        echo " Downloading $LIBAIO1 ......"
-        $OPKGINSTAL $LIBAIO1
+        echo " Downloading  $PKGBAPP ......"
+        echo
+        $OPKGINSTAL  $PKGBAPP -y
+        sleep 1; clear
     fi
-elif grep -qs "Package: $LIBC6" $STATUS ; then
-    echo
-else
-    echo "APT Update ..."
-    $OPKG > /dev/null 2>&1
-    echo " Downloading $LIBC6 ......"
-    $OPKGINSTAL $LIBC6
 fi
 
 if [ $OSTYPE = "Opensource" ]; then
-    if grep -qs "Package: $PACKAGE" $STATUS ; then
+    if grep -qs "Package: $PKGEXP3" $STATUS ; then
         echo
     else
-        echo ""
-        echo "#########################################################"
-        echo "#              $PACKAGE Not found in feed               #"
-        echo "#      Notification Abertis DTT Channel will not work   #"
-        echo "#                    without $PACKAGE                   #"
-        echo "#########################################################"
-    fi
-elif [ $OSTYPE = "DreamOS" ]; then
-    if grep -qs "Package: $LIBAIO1" $STATUS ; then
-        echo
-    else
-        echo "Feed Missing $LIBAIO1"
-        echo "Sorry, the $PACKAGE will not be work"
+        echo "Feed Missing $PKGEXP3"
+        echo "Sorry, the plugin will not be install"
         exit 1
     fi
-    if grep -qs "Package: $LIBC6" $STATUS ; then
+    if grep -qs "Package: $PKGGPLY" $STATUS ; then
         echo
     else
-        echo "Feed Missing $LIBC6"
-        echo "Sorry, the $PACKAGE will not be work"
+        echo "Feed Missing $PKGGPLY"
+        echo "Sorry, the plugin will not be install"
         exit 1
     fi
-
-fi
-
-###############################
-# Downlaod And Install Plugin #
-set -e
-echo "Downloading And Insallling Channel Please Wait ......"
-wget $MY_URL/channels_backup_user_${VERSION}.tar.gz -qP $TMPDIR
-tar -zxf $TMPDIR/channels_backup_user_${VERSION}.tar.gz -C /
-sleep 1
-set +e
-echo
-echo 'Reloading Services - Please Wait'
-wget -qO http://127.0.0.1/web/servicelistreload?mode=0 > /dev/null 2>&1
-sleep 1
-echo
-
-set -e
-echo "Downloading And Insallling Please Wait ......"
-wget $MY_URL/bbc_pmt_v6.tar.gz -qP $TMPDIR
-tar -zxf $TMPDIR/bbc_pmt_v6.tar.gz -C /
-sleep 1
-set +e
-chmod 755 /usr/bin/{bbc_pmt_starter.sh,bbc_pmt_v6.py,enigma2_pre_start.sh}
-
-
-if [ $OSTYPE = "Opensource" ]; then
-    uname -m > "$CHECK"
-    sleep 1
-
-    if grep -qs -i 'armv7l' cat "$CHECK" ; then
-        echo ':Your Device IS ARM processor ...'
-        echo
-        set -e
-        echo "Downloading And Insallling Config $PACKAGE Please Wait ......"
-        wget $MY_URL/astra-arm.tar.gz -qP $TMPDIR
-        tar -xzf $TMPDIR/astra-arm.tar.gz -C /
-        sleep 1
-        set +e
-        chmod -R 755 /etc/astra
-
-    elif grep -qs -i 'mips' cat "$CHECK" ; then
-        echo ':Your Device IS MIPS processor ...'
-        sleep 2; clear
-        set -e
-        echo "Downloading And Insallling Config $PACKAGE Please Wait ......"
-        wget $MY_URL/astra-mips.tar.gz -qP $TMPDIR
-        tar -xzf $TMPDIR/astra-mips.tar.gz -C /
-        sleep 1
-        set +e
-        chmod -R 755 /etc/astra
-
-    fi
 elif [ $OSTYPE = "DreamOS" ]; then
-    if grep -qs -i 'aarch64' cat "$CHECK" ; then
-        echo ':Your Device IS AARCH64 processor ...'
-        sleep 2; clear
-        set -e
-        echo "Downloading And Insallling Config $PACKAGE Please Wait ......"
-        wget $MY_URL/astra-aarch64.tar.gz -qP $TMPDIR
-        tar -xzf $TMPDIR/astra-aarch64.tar.gz -C /
-        sleep 1
-        set +e
-        chmod 755 /usr/bin/{astra,spammer,t2mi_decap}
-        chmod -R 755 /etc/astra
+    if grep -qs "Package: $PKGBAPP" $STATUS ; then
+        echo
+    else
+        echo "Feed Missing $PKGBAPP"
+        echo "Sorry, the plugin will not be install"
+        exit 1
     fi
 fi
-#########################
-# Remove files (if any) #
-rm -rf $TMPDIR/channels_backup_user_${VERSION}.tar.gz astra-*.tar.gz bbc_pmt_v6.tar.gz
-
-sync
-echo ""
-echo ""
-echo "#########################################################"
-echo "#       Channel And Config INSTALLED SUCCESSFULLY       #"
-echo "#     WELCOME TO CHANNELS BY ROMEH                          #"    
-echo "#########################################################"
-echo "#           your Device will RESTART Now                #"
-echo "#########################################################"
-sleep 2
-
+###################
+#  Install Plugin #
 if [ $OSTYPE = "Opensource" ]; then
-    killall -9 enigma2
+    echo "Downloading And Insallling JediMakerXtream plugin Please Wait ......"
+    wget $MY_URL/${PACKAGE}_${VERSION}_all.ipk -qP $TMPDIR
+    $OPKGINSTAL $TMPDIR/${PACKAGE}_${VERSION}_all.ipk
 else
-    systemctl restart enigma2
+    echo "Downloading And Insallling JediMakerXtream plugin Please Wait ......"
+    wget $MY_URL/${PACKAGE}_${VERSION}.deb -qP $TMPDIR
+    $DPKINSTALL $TMPDIR/${PACKAGE}_${VERSION}.deb; $OPKGINSTAL -f -y
 fi
+
+##################################
+# Remove previous files (if any) #
+rm -rf $TMPDIR/${PACKAGE}*
+
+sleep 1; clear
+echo ""
+echo "***********************************************************************"
+echo "**                                                                    *"
+echo "**  Welcome JediMakerXtream    : $VERSION                             *"
+echo "** Uploaded by: tarezoka                      *"
+echo "**                       Develop by : ZAKARIYA KHA                    *"
+echo "**                                                                    *"
+echo "welcome to jediepgextream"
+echo ""
 
 exit 0
